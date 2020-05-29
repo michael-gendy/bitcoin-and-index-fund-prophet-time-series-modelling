@@ -8,7 +8,7 @@ Created on Tue May 19 13:20:35 2020
 The purpose of this code is to call price action for a cryto pairing, 
 and find how it's correlation with another time series varies over a specified timeframe
 
-""""
+"""
 import cryptowatch as cw
 #import time
 import pandas as pd
@@ -21,7 +21,7 @@ import seaborn as sns
 import yfinance as yf
 import matplotlib.pyplot as plt
 
-cw.api_key = '<CRYPTOWATCH API KEY>'
+cw.api_key = 'QSIYN3W065D5BWUA7AFR'
 
 def get_price_action(exchange, market, period):
     candles=cw.markets.get("{}:{}".format(exchange, market)
@@ -74,7 +74,7 @@ def cointegration_function(df1, var1, df2, var2, timeframe):
     result_df.index.name = 'timeframe'
     
     return result_df
-    
+"""
 #finding the correlation of BTC and ETH 
 btc_eth_weekly_corr = cointegration_function(df1 = df_eth_usd_kraken_1h
                                         ,var1 = 'close'
@@ -86,7 +86,7 @@ btc_eth_weekly_corr = cointegration_function(df1 = df_eth_usd_kraken_1h
 sns.set(style="whitegrid")
 _ = sns.barplot(x = btc_eth_weekly_corr.index, y= btc_eth_weekly_corr['pearsons_coeff'])
 plt.show()
-
+"""
 ######################################################################################
 ####################EXAMPLE MAPPING VS STOCKS ########################################
 ######################################################################################
@@ -113,14 +113,36 @@ nasdaq_btc_monthly_corr = cointegration_function(nasdaq_df
 #inspect output 
 nasdaq_btc_monthly_corr.head()
 
+
 #plot monthly correlation coefficients 
-ax = sns.barplot(x = nasdaq_btc_monthly_corr.index, y= nasdaq_btc_monthly_corr['pearsons_coeff']
-                ,)
-ax.set_xlabel("Month")
-ax.set_ylabel("Pearson's Correlation Coefficient")
+#try and merge on BTC_USD monthly to plot both on the same axis 
+fig1, ax1 = plt.subplots(figsize=(6,6))
+
+sns.barplot(x = nasdaq_btc_monthly_corr.index
+                ,y = nasdaq_btc_monthly_corr['pearsons_coeff']
+                ,ax =ax1)
+ax1.set_xlabel("Month")
+ax1.set_ylabel("Pearson's Correlation Coefficient")
+
 #only take every 12th x label due to overlap 
-for i, t in enumerate(ax.get_xticklabels()):
+for i, t in enumerate(ax1.get_xticklabels()):
     if (i % 12) != 0:
         t.set_visible(False)
+
+#compare against price graphs 
+fig2, ax2 = plt.subplots(figsize=(6,6))
+
+sns.lineplot(x = btc_usd_coinbase_1d.index
+            ,y = btc_usd_coinbase_1d['close']
+            ,ax=ax2)
+
+sns.lineplot(x = nasdaq_df.index
+           ,y= nasdaq_df['Close']
+           ,ax=ax2)
+
+ax2.set_xlim([datetime(2015, 1, 1), datetime(2020, 6, 1)])
+ax1.set_xlabel("Date")
+ax1.set_ylabel("Price/USD")
+
 
 plt.show()

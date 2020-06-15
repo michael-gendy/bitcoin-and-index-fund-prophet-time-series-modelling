@@ -12,7 +12,8 @@ import matplotlib.pyplot as plt
 import fbprophet
 from fbprophet.plot import add_changepoints_to_plot
 import seaborn as sns
-
+from scipy.stats import pearsonr
+import yfinance as yf
 
 print("All libraries imported successfully")
 
@@ -248,7 +249,6 @@ find_optimal_prophet_model(btc, cpps, halvings, 365, 'D', 20)
 #retesting with less volatile data - index funds
 
 
-import yfinance as yf
 tickers = {'NASDAQ' : '^IXIC'
            ,'S&P' : '^GSPC'
            ,'DOW' : '^DJI'}
@@ -278,7 +278,114 @@ find_optimal_prophet_model(nasdaq_df, cpps, events, 365, 'D', 10)
 ###############EVLALUATING CORRELATION BETWEEN Y_TEST AND Y_PRED############
 ############################################################################
 
-#the nasdaq model was somewhat better at predicting future values
-#to illustrate this, we can plot the change in pearson correlation coefficient
-#over time to see the exact point at which the model starts to be ineffective
+#since the model performed poorly on Bitcoin data, lets choose a less (but still somewhat) volatile market - indexes
 
+#set tickers
+tickers = {'NASDAQ' : '^IXIC'
+           ,'S&P' : '^GSPC'
+           ,'DOW' : '^DJI'}
+
+#pulling in nasdaq data
+index_ticket = yf.Ticker(tickers['NASDAQ']) #choose index here
+index_df = pd.DataFrame(index_ticket.history(period='max'))
+
+#reduce timeframe and change format
+index_df = index_df[index_df.index >= '2015-01-01']
+index_df.reset_index(inplace=True)
+index_df.rename(columns={'Date' : 'ds', 'Close' : 'y'}, inplace=True)
+
+
+#Evaulate prophet model vs test data using rolling correlation function
+
+#define function that takes two time series dataframes, marges them, splits into specified timeframe and finds correlation coefficient during that time 
+def cointegration_function(df1, var1, df2, var2, timeframe):
+    #slice the dataframes, ensure both indexes are named same and joining to one dataframe 
+    df1_slice = df1.loc[:, ['{}'.format(var1)]]
+    df2_slice = df2.loc[:, ['{}'.format(var2)]]
+    df1_slice.index.name = 'date'
+    df2_slice.index.name = 'date'
+    df_comb = pd.merge(df1_slice, df2_slice, on='date')
+    #add week/month/day numbers 
+    df_comb['day'] = df_comb.index.strftime('%x')
+    df_comb['week'] = df_comb.index.strftime('%Y-%W')
+    df_comb['month'] = df_comb.index.strftime('%Y-%m')
+    
+    #create empty dict for results 
+    results = {}
+    #split into timeframe, and calc correlation coefficient for all data points in that timeframe
+    #if statement error-handles for variables that are named the same
+    if var1 == var2:
+        for tf in df_comb['{}'.format(timeframe)].unique():
+            timeframe_data = df_comb[df_comb['{}'.format(timeframe)] == tf]
+            corr = pearsonr(timeframe_data['{}'.format(var1 + '_x')], timeframe_data['{}'.format(var2 + '_y')])
+            results[tf] = [corr[0]]
+    else: 
+  #split into timeframe, and calc correlation coefficient for all data points in that 
+        for tf in df_comb['{}'.format(timeframe)].unique():
+            timeframe_data = df_comb[df_comb['{}'.format(timeframe)] == tf]
+            corr = pearsonr(timeframe_data['{}'.format(var1)], timeframe_data['{}'.format(var2)])
+            results[tf] = [corr[0]]
+    result_df = pd.DataFrame.from_dict(results, orient='index', columns=['pearsons_coeff'])
+    result_df.index.name = 'timeframe'
+    
+    return result_df
+
+#create the model and fit the data 
+#changepoint_prior_scale is used to control how sensitive the trend is to change
+#higher = more sensitive  lower = less sensitive 
+index_prophet = fbprophet.Prophet(changepoint_prior_scale=0.05
+                                ,changepoint_range=0.9 # also setting checkpoitns for 90% (up from 80%) of range
+                                ,n_changepoints=30 #specified amount won't necessarily appear in add_changepoints_to_plot, but will always appear once you inspect the .changepoints attribute
+                                )
+index_prophet.fit(index_df)
+
+#create a dataframe with new dates 
+index_forecast = index_prophet.make_future_dataframe(periods = 365
+                                               ,freq = 'D')
+
+#make predictions in the new dataframe
+index_forecast = index_prophet.predict(index_forecast)
+
+#obtain prophet predictions 
+index_predictions = index_forecast.loc[:, ('ds', 'yhat')] #yhat is prophets prediction
+index_predictions.rename(columns={'ds' : 'date'}, inplace=True)
+index_predictions.set_index('date', inplace=True)
+
+index_predictions.tail()
+
+#recall price action before format changes
+index_ticket = yf.Ticker(tickers['NASDAQ'])
+index_df = pd.DataFrame(index_ticket.history(period='max'))
+index_df = index_df[index_df.index >= '2015-01-01']
+
+
+#find correlations
+
+prophet_preditions_vs_actual_correlation = cointegration_function(index_predictions
+                                                 ,'yhat'
+                                                 ,index_df
+                                                 ,'Close'
+                                                 ,timeframe='month')
+
+#plot monthly correlation coefficients 
+fig1, ax1 = plt.subplots(figsize=(12,6))
+
+sns.barplot(x = prophet_preditions_vs_actual_correlation.index
+                ,y = prophet_preditions_vs_actual_correlation['pearsons_coeff']
+                ,ax =ax1)
+ax1.set_xlabel("Month")
+ax1.set_ylabel("Pearson's Correlation Coefficient")
+
+#only take every 12th x label due to overlap 
+for i, t in enumerate(ax1.get_xticklabels()):
+    if (i % 12) != 0:
+        t.set_visible(False)
+
+plt.show()
+
+#compare with model visuslisation 
+fig = index_prophet.plot(index_forecast
+                ,xlabel = 'Date'
+                ,ylabel = 'BTC/USD')
+
+fig

@@ -2,7 +2,9 @@
 Exploratory additive time series modelling using Prophet 
 <h1> Bitcoin Time Series Modelling</h1>
 
-The purpose of this project is to explore the application of the library Phophet on Bitcoins price action (from CryptoWatch API), to gain familiarity with the library and to create useful functions for both retriving cryptocurrency data, and evaluating prophet models.
+The purpose of this project is to explore the application of the library Phophet on Bitcoins price action (from CryptoWatch API), to gain familiarity with the library and to create useful functions for both retriving cryptocurrency data, and evaluating prophet models. The repository has two smaller .py files which were used to create the functions created, and the notebook consolidates all outcomes and findings into one easy to follow file.
+
+Attempting to predict BTC or index fund market price using Prophet for real money is not the aim here. These time series' have only been selected as an intersting case study/thought experiement which also exemplifies the strengths and weakenesses of Prophets models. Despite the lack of actionable insights, the project has achieved its goal in providing a welcome introduction to FBProphet and useful functions for future time series analysis. 
 
 <h3> Key Outcomes</h3>
 <ul>
@@ -11,18 +13,7 @@ The purpose of this project is to explore the application of the library Phophet
 <li>Created a function to find rolling pearsons correlation coefficient of two time series' over specified timeframe  </li>
 <li>Evaluted Prophet change point relevancy to google trends interest </li>
 <li>Created a function to compare different Prophet models via changepoint_prior_scale hyperparameter tuning </li>
-<li>Bitcoin Prophet Hyperparameter Tuning </li>
-    
-    
-</ul>
+<li>Evaluated the efficacy of Prophet models using the rolling pearsons correlation coefficient function</li>
+<li>Used the yahoo fincnace library to call historical index function price action</li>
 
-<h3> Contents </h3>
-<ul>
-<li>Bitcoin Price Action Retrieval from CryptoWatch API </li>
-<li>Exploratory Rolling Pearson's Correlation Analysis With Index Funds </li>
-<li>Bitcoin Prophet Introduction </li>
-<li>Bitcoin Prophet Hyperparameter Tuning </li>
-<li>Change Point Comparison with Google Trend Data  </li>
-<li>Evaluating Prophet Model Predictions of Index Fund Prices  </li>
-
-</ul>
+    
